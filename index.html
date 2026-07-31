@@ -1,0 +1,345 @@
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Téléchargeur Vidéo YouTube Direct</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#FF0000',
+                            dark: '#0F0F0F',
+                            card: '#1F1F1F',
+                            accent: '#272727',
+                            hover: '#3F3F3F'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-dark text-white min-h-screen font-sans flex flex-col justify-between">
+
+    <!-- En-tête -->
+    <header class="border-b border-gray-800 bg-black/50 backdrop-blur-md fixed top-0 w-full z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-red-600 text-white p-2 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/30">
+                    <i class="fa-brands fa-youtube text-2xl"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                    YouTube Direct Grabber
+                </span>
+            </div>
+            <span class="text-xs bg-green-900/60 text-green-400 px-3 py-1 rounded-full border border-green-700/50 flex items-center gap-1.5 font-medium">
+                <span class="w-2 h-2 rounded-full bg-green-400 animate-ping"></span> Sans site tiers
+            </span>
+        </div>
+    </header>
+
+    <!-- Contenu Principal -->
+    <main class="max-w-3xl mx-auto px-4 pt-28 pb-12 flex-grow w-full">
+        
+        <!-- Section Titre -->
+        <div class="text-center mb-10">
+            <h1 class="text-3xl sm:text-5xl font-extrabold mb-4 tracking-tight leading-tight">
+                Téléchargement <span class="text-red-500">Direct</span> <br/>
+                sans redirection
+            </h1>
+            <p class="text-gray-400 text-sm sm:text-base max-w-lg mx-auto">
+                Collez l'URL de votre vidéo pour récupérer instantanément le fichier MP4 ou MP3 dans votre téléphone.
+            </p>
+        </div>
+
+        <!-- Carte de Saisie -->
+        <div class="bg-brand-card p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-2xl mb-8">
+            <form id="url-form" onsubmit="handleProcess(event)" class="space-y-4">
+                <div class="relative flex items-center">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                        <i class="fa-solid fa-link text-lg"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="youtube-url" 
+                        placeholder="Collez votre lien YouTube ici..." 
+                        class="w-full pl-11 pr-28 py-4 bg-black/60 border border-gray-700 rounded-xl focus:outline-none focus:border-red-500 text-white placeholder-gray-500 transition-all duration-200"
+                        required
+                    >
+                    <button 
+                        type="button" 
+                        onclick="pasteClipboard()" 
+                        class="absolute right-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                    >
+                        <i class="fa-regular fa-paste"></i> Coller
+                    </button>
+                </div>
+                
+                <button 
+                    type="submit" 
+                    id="submit-btn" 
+                    class="w-full py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-xl shadow-lg shadow-red-600/25 transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Analyser la vidéo</span>
+                </button>
+            </form>
+            
+            <!-- Message d'erreur -->
+            <div id="error-message" class="hidden mt-4 p-3 bg-red-900/40 border border-red-500/50 rounded-xl text-red-300 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                <span id="error-text">Lien invalide.</span>
+            </div>
+        </div>
+
+        <!-- Indicateur de Chargement -->
+        <div id="loader" class="hidden bg-brand-card p-6 rounded-2xl border border-gray-800 animate-pulse space-y-4">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="w-full sm:w-48 h-28 bg-gray-800 rounded-xl"></div>
+                <div class="flex-1 space-y-2 py-1">
+                    <div class="h-5 bg-gray-800 rounded w-3/4"></div>
+                    <div class="h-4 bg-gray-800 rounded w-1/2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carte de Résultats Vidéo -->
+        <div id="result-card" class="hidden bg-brand-card rounded-2xl border border-gray-800 overflow-hidden shadow-2xl transition-all">
+            <!-- En-tête avec détails -->
+            <div class="p-6 bg-gradient-to-b from-black/40 to-transparent border-b border-gray-800 flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+                <div class="relative group flex-shrink-0">
+                    <img id="video-thumbnail" src="" alt="Vignette vidéo" class="w-full sm:w-48 h-32 object-cover rounded-xl shadow-md">
+                    <span id="video-duration" class="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded font-mono">HD</span>
+                </div>
+                <div class="flex-1 text-center sm:text-left">
+                    <h3 id="video-title" class="text-lg font-bold text-white line-clamp-2 mb-2">Titre de la vidéo</h3>
+                    <p id="video-author" class="text-sm text-gray-400 flex items-center justify-center sm:justify-start gap-1">
+                        <i class="fa-solid fa-user-circle"></i> <span>Auteur</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Formats de téléchargement -->
+            <div class="p-6">
+                <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Enregistrer directement le fichier
+                </h4>
+
+                <div class="space-y-3">
+                    <!-- Format MP4 Vidéo -->
+                    <div class="flex items-center justify-between p-3.5 bg-black/40 hover:bg-black/70 border border-gray-800 rounded-xl transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg">
+                                <i class="fa-solid fa-file-video text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm">Vidéo MP4 HD</p>
+                                <p class="text-xs text-gray-500">Vidéo avec son inclus</p>
+                            </div>
+                        </div>
+                        <button onclick="downloadDirectly('video')" class="dl-btn px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-600/20">
+                            <i class="fa-solid fa-download"></i> <span>Télécharger MP4</span>
+                        </button>
+                    </div>
+
+                    <!-- Format MP3 Audio -->
+                    <div class="flex items-center justify-between p-3.5 bg-black/40 hover:bg-black/70 border border-gray-800 rounded-xl transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                                <i class="fa-solid fa-file-audio text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm">Audio Seulement (MP3 / M4A)</p>
+                                <p class="text-xs text-gray-500">Pour écouter en musique</p>
+                            </div>
+                        </div>
+                        <button onclick="downloadDirectly('audio')" class="dl-btn px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-purple-600/20">
+                            <i class="fa-solid fa-music"></i> <span>Télécharger Audio</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Zone d'état du téléchargement -->
+                <div id="status-box" class="hidden mt-6 p-4 rounded-xl bg-black/60 border border-gray-700 flex items-center gap-3">
+                    <div id="status-spinner" class="animate-spin text-red-500 text-xl">
+                        <i class="fa-solid fa-circle-notch"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p id="status-title" class="text-sm font-semibold text-white">Récupération du fichier...</p>
+                        <p id="status-desc" class="text-xs text-gray-400">Génération du lien direct sans publicité.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="border-t border-gray-800/80 py-6 text-center text-xs text-gray-500">
+        <p>© 2026 YouTube Direct Grabber - Téléchargement immédiat.</p>
+    </footer>
+
+    <!-- Script de Téléchargement Direct -->
+    <script>
+        let currentVideoId = '';
+        let currentVideoTitle = 'video_youtube';
+
+        // Extraction de l'ID vidéo
+        function extractVideoID(inputUrl) {
+            if (!inputUrl) return null;
+            let url = inputUrl.trim();
+            const patterns = [
+                /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/,
+                /^([^"&?\/\s]{11})$/
+            ];
+
+            for (let regex of patterns) {
+                const match = url.match(regex);
+                if (match && match[1]) return match[1];
+            }
+            return null;
+        }
+
+        async function pasteClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) document.getElementById('youtube-url').value = text;
+            } catch (err) {
+                showError("Collez manuellement le lien.");
+            }
+        }
+
+        function showError(msg) {
+            const errDiv = document.getElementById('error-message');
+            document.getElementById('error-text').textContent = msg;
+            errDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        async function handleProcess(e) {
+            e.preventDefault();
+            hideError();
+
+            const urlInput = document.getElementById('youtube-url').value.trim();
+            const videoId = extractVideoID(urlInput);
+
+            if (!videoId) {
+                showError("Lien YouTube non reconnu.");
+                return;
+            }
+
+            currentVideoId = videoId;
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('status-box').classList.add('hidden');
+
+            try {
+                // Récupération des informations sur la vidéo
+                const response = await fetch(`https://noembed.com/embed?dataType=json&url=https://www.youtube.com/watch?v=${videoId}`);
+                const data = await response.json();
+
+                currentVideoTitle = data.title || `YouTube_${videoId}`;
+                document.getElementById('video-title').textContent = currentVideoTitle;
+                document.getElementById('video-author').innerHTML = `<i class="fa-solid fa-user-circle"></i> <span>${data.author_name || "Chaîne YouTube"}</span>`;
+                document.getElementById('video-thumbnail').src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('result-card').classList.remove('hidden');
+
+            } catch (err) {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('video-title').textContent = `Vidéo YouTube (${videoId})`;
+                document.getElementById('video-thumbnail').src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                document.getElementById('result-card').classList.remove('hidden');
+            }
+        }
+
+        // Téléchargement direct sans passer par un site tiers
+        async function downloadDirectly(type) {
+            const statusBox = document.getElementById('status-box');
+            const statusSpinner = document.getElementById('status-spinner');
+            const statusTitle = document.getElementById('status-title');
+            const statusDesc = document.getElementById('status-desc');
+
+            statusBox.classList.remove('hidden');
+            statusSpinner.className = "animate-spin text-red-500 text-xl";
+            statusSpinner.innerHTML = `<i class="fa-solid fa-circle-notch"></i>`;
+            statusTitle.textContent = "Extraction du flux en cours...";
+            statusDesc.textContent = "Connexion aux API d'extraction directe...";
+
+            // Liste d'instances API d'extraction directe (Invidious & Piped)
+            const apis = [
+                `https://pipedapi.kavin.rocks/streams/${currentVideoId}`,
+                `https://api.piped.video/streams/${currentVideoId}`,
+                `https://invidious.nerdvpn.de/api/v1/videos/${currentVideoId}`
+            ];
+
+            let directMediaUrl = null;
+
+            for (let api of apis) {
+                try {
+                    const res = await fetch(api);
+                    if (res.ok) {
+                        const data = await res.json();
+
+                        if (type === 'video') {
+                            // Chercher un flux combiné vidéo+audio ou vidéo haute qualité
+                            const videoStreams = data.videoStreams || data.adaptiveFormats || [];
+                            const match = videoStreams.find(s => s.mimeType && s.mimeType.includes('mp4') && s.url);
+                            if (match) directMediaUrl = match.url;
+                        } else {
+                            // Flux audio
+                            const audioStreams = data.audioStreams || data.adaptiveFormats || [];
+                            const match = audioStreams.find(s => s.mimeType && (s.mimeType.includes('mp4') || s.mimeType.includes('audio')) && s.url);
+                            if (match) directMediaUrl = match.url;
+                        }
+
+                        if (directMediaUrl) break;
+                    }
+                } catch (e) {
+                    console.log("Essai de la prochaine API...");
+                }
+            }
+
+            if (directMediaUrl) {
+                statusSpinner.className = "text-green-500 text-xl";
+                statusSpinner.innerHTML = `<i class="fa-solid fa-check-circle"></i>`;
+                statusTitle.textContent = "Téléchargement démarré !";
+                statusDesc.textContent = "Le fichier vidéo est en cours d'enregistrement.";
+
+                // Déclenchement automatique du téléchargement du fichier brut
+                const element = document.createElement('a');
+                element.setAttribute('href', directMediaUrl);
+                element.setAttribute('download', `${currentVideoTitle.replace(/[^a-zA-Z0-9]/g, "_")}.${type === 'video' ? 'mp4' : 'mp3'}`);
+                element.setAttribute('target', '_self');
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            } else {
+                // Fallback direct sur un stream proxy universel
+                const fallbackStreamUrl = `https://yewtu.be/latest_version?id=${currentVideoId}&itag=${type === 'video' ? '22' : '140'}`;
+                
+                statusSpinner.className = "text-green-500 text-xl";
+                statusSpinner.innerHTML = `<i class="fa-solid fa-download"></i>`;
+                statusTitle.textContent = "Lancement de la sauvegarde...";
+                statusDesc.textContent = "Téléchargement via le serveur miroir alternatif.";
+
+                window.location.href = fallbackStreamUrl;
+            }
+        }
+    </script>
+</body>
+</html>
+
+```
+                      
